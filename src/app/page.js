@@ -458,7 +458,7 @@ export default function TimesheetPage() {
                             ))}
                             <button
                                 onClick={() => addSession(i)}
-                                className="text-blue-600 dark:text-blue-400 text-base hover:text-blue-800 dark:hover:text-blue-300 transition-colors duration-200 hover:underline"
+                                className="text-blue-600 dark:text-blue-400 text-base hover:text-blue-800 dark:hover:text-blue-300 transition-colors duration-200 hover:underline cursor-pointer"
                             >
                               + Session
                             </button>
