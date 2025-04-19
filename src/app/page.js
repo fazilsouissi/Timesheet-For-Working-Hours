@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { addDays, format, parseISO, startOfWeek } from "date-fns";
 
 const LS_KEY = "qanova_weeklySessions";
+const LS_KEY_NAME = "qanova_userName";
 
 export default function TimesheetPage() {
   const [weeklySessions, setWeeklySessions] = useState({});
@@ -11,6 +12,7 @@ export default function TimesheetPage() {
   const [weekStart, setWeekStart] = useState("");
   const [sessions, setSessions] = useState([]);
   const [log, setLog] = useState("");
+  const [name, setName] = useState("");
   const dayNames = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 
   // Helpers
@@ -33,6 +35,10 @@ export default function TimesheetPage() {
         .map(() => [{ start: "", end: "" }]);
     }
     setWeeklySessions(stored);
+
+    // load name from cache
+    const savedName = localStorage.getItem(LS_KEY_NAME) || "";
+    setName(savedName);
   }, []);
 
   // Sync weeksList and weekStart
@@ -48,6 +54,11 @@ export default function TimesheetPage() {
   useEffect(() => {
     localStorage.setItem(LS_KEY, JSON.stringify(weeklySessions));
   }, [weeklySessions]);
+
+  // Persist user name
+  useEffect(() => {
+    localStorage.setItem(LS_KEY_NAME, name);
+  }, [name]);
 
   // Load sessions
   useEffect(() => {
@@ -164,15 +175,15 @@ export default function TimesheetPage() {
       (h, i) => h > 0 && lines.push(`\t[${dayNames[i].padEnd(12)} ${fmt(h)}]`),
     );
     lines.push(
-      "",
-      `Total: ${fmt(total)}`,
-      "",
-      "Kind Regards",
-      "",
-      "Fazil Souissi",
+        "",
+        `Total: ${fmt(total)}`,
+        "",
+        "Kind Regards",
+        "",
+        name || "",
     );
     setLog(lines.join("\n"));
-  }, [weekStart, sessions]);
+  }, [weekStart, sessions, name]);
 
   // Enter navigation
   const handleEnter = (e) => {
@@ -397,6 +408,13 @@ export default function TimesheetPage() {
               <label className="font-semibold transition-colors duration-200">
                 Generated Log:
               </label>
+              <input
+                      type="text"
+                      placeholder="Your Name"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      className="border rounded-lg p-2 w-48 transition-colors duration-200 focus:ring focus:ring-blue-200"
+                  />
               <button
                 onClick={() => {
                   navigator.clipboard.writeText(log);
@@ -407,7 +425,7 @@ export default function TimesheetPage() {
                   }, 2000);
                 }}
                 id="copyButton"
-                className="mt-2 py-2 px-4 bg-indigo-600 text-white rounded-lg transition-colors duration-200 hover:bg-indigo-700 cursor-pointer"
+                className="py-2 px-4 bg-indigo-600 text-white rounded-lg transition-colors duration-200 hover:bg-indigo-700 cursor-pointer"
               >
                 Copy to Clipboard
               </button>
