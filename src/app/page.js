@@ -31,18 +31,19 @@ export default function TimesheetPage() {
     return mon;
   };
 
+  // Navigation logic between weeks (using Ctrl+Arrow left/right)
   useEffect(() => {
     const onKeyDown = (e) => {
       if (!e.ctrlKey) return;
 
       // find current position
       const idx = weeksList.indexOf(weekStart);
-      if (e.key === "ArrowRight") {
+      if (e.key === "ArrowDown") {
         // next week is the one *older* in your sorted array
         const next = weeksList[idx + 1];
         if (next) setWeekStart(next);
       }
-      if (e.key === "ArrowLeft") {
+      if (e.key === "ArrowUp") {
         const prev = weeksList[idx - 1];
         if (prev) setWeekStart(prev);
       }
