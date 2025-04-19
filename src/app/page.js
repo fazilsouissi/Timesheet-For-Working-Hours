@@ -100,7 +100,7 @@ export default function TimesheetPage() {
     setLog(lines.join("\n"));
   }, [weekStart, sessions, name]);
 
-  // 2) Initialize from localStorage
+  // 2) Initialize from localStorage the first time
   useEffect(() => {
     const raw = localStorage.getItem(LS_KEY);
     const stored = raw ? JSON.parse(raw) : {};
@@ -112,7 +112,7 @@ export default function TimesheetPage() {
     setName(localStorage.getItem(LS_KEY_NAME) || "");
   }, []);
 
-  // 3) Keep weeksList & weekStart in sync when weeklySessions changes
+  // 3) When weeklySessions changes keep weeksList & weekStart in sync
   useEffect(() => {
     const keys = Object.keys(weeklySessions).sort((a, b) =>
         b.localeCompare(a)
@@ -132,9 +132,9 @@ export default function TimesheetPage() {
     localStorage.setItem(LS_KEY_NAME, name);
   }, [name]);
 
-  // 5) Handlers
 
-  // Ensure the picked week is also added to weeklySessions
+  // 5) Handlers
+  // Ensure the picked week is also added to weeklySessions (logic when I pick a week from the picker)
   const handleWeekChange = (e) => {
     let iso = e.target.value;
     const parsed = parseISO(iso);
@@ -306,11 +306,11 @@ export default function TimesheetPage() {
   }
 
   return (
-      <div className="p-4 md:p-8 bg-gray-50 min-h-screen flex flex-col md:flex-row">
+      <div className="p-4 md:p-8 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 min-h-screen flex flex-col md:flex-row">
         <aside className="w-full md:w-64 mb-4 md:mb-0 md:mr-6 transition-all duration-200">
           <button
               onClick={handleNewWeek}
-              className="mb-4 w-full py-2 bg-blue-600 text-white rounded-lg transition-colors duration-200 hover:bg-blue-700 cursor-pointer"
+              className="mb-4 w-full py-2 bg-blue-600 dark:bg-blue-500 text-white rounded-lg transition-colors duration-200 hover:bg-blue-700 dark:hover:bg-blue-600 cursor-pointer"
           >
             Next Week
           </button>
@@ -330,155 +330,128 @@ export default function TimesheetPage() {
               });
 
               return Object.entries(monthMap).map(([monthLabel, isoArray]) => {
-                // compute total hours for this month
-                const monthHours = isoArray.reduce((sumW, iso) => {
-                  const weekSess = weeklySessions[iso] || [];
-                  const weekTotal = weekSess
-                      .flat()
-                      .reduce((sumS, sess) => sumS + getHours(sess), 0);
-                  return sumW + weekTotal;
-                }, 0);
 
-                let hourlyRate = 22.5; // CHF
-                const monthPay = (monthHours * hourlyRate).toFixed(2);
+              // compute total hours for this month
+              const monthHours = isoArray.reduce((sumW, iso) => {
+                const weekSess = weeklySessions[iso] || [];
+                const weekTotal = weekSess
+                    .flat()
+                    .reduce((sumS, sess) => sumS + getHours(sess), 0);
+                return sumW + weekTotal;
+              }, 0);
 
-                return (
-                    <li key={monthLabel}>
-                      <div className="px-2 py-1 bg-gray-100 rounded-md flex justify-between items-center">
-              <span className="font-medium">
-                {monthLabel}
-              </span>
-                        <span className="text-sm text-gray-600">
-                {Math.round(monthHours * 100) / 100} h&nbsp;–&nbsp;CHF {monthPay}
-              </span>
-                      </div>
-                      <ul className="pl-4 mt-2 space-y-1">
-                        {isoArray.map(iso => (
-                            <li
-                                key={iso}
-                                className="flex justify-between items-center transition-colors duration-200 hover:bg-gray-100 rounded"
-                            >
-                              <button
-                                  onClick={() => setWeekStart(iso)}
-                                  className={`
-                      ${iso === weekStart ? 'font-bold text-blue-700' : 'text-gray-700'}
-                      transition-colors duration-200 hover:text-blue-600
+              let hourlyRate = 22.5; // CHF
+              const monthPay = (monthHours * hourlyRate).toFixed(2);
+
+              return (
+                  <li key={monthLabel}>
+                    <div className="px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded-md flex justify-between items-center">
+                      <span className="font-medium">{monthLabel}</span>
+                      <span className="text-sm text-gray-600 dark:text-gray-400">
+                        {Math.round(monthHours * 100) / 100} h&nbsp;–&nbsp;CHF {monthPay}
+                      </span>
+                    </div>
+                    <ul className="pl-4 mt-2 space-y-1">
+                      {isoArray.map(iso => (
+                          <li
+                              key={iso}
+                              className="flex justify-between items-center transition-colors duration-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                          >
+                            <button
+                                onClick={() => setWeekStart(iso)}
+                                className={`
+                      ${
+                                    iso === weekStart
+                                        ? 'font-bold text-blue-700 dark:text-blue-300'
+                                        : 'text-gray-700 dark:text-gray-200'
+                                }
+                      transition-colors duration-200 hover:text-blue-600 dark:hover:text-blue-400
                     `}
-                              >
-                                {format(parseISO(iso), 'dd LLL')}
-                              </button>
-                              <button
-                                  onClick={() => handleDeleteWeek(iso)}
-                                  className="
+                            >
+                              {format(parseISO(iso), 'dd LLL')}
+                            </button>
+                            <button
+                                onClick={() => handleDeleteWeek(iso)}
+                                className="
                       flex items-center justify-center self-center
                       w-5 h-5 leading-none
                       rounded-full
-                      text-red-600
+                      text-red-600 dark:text-red-400
                       transition duration-200
-                      hover:bg-red-600 hover:text-white
+                      hover:bg-red-600 dark:hover:bg-red-500 hover:text-white
                       cursor-pointer
                     "
-                              >
-                                ×
-                              </button>
-                            </li>
-                        ))}
-                      </ul>
-                    </li>
-                );
+                            >
+                              ×
+                            </button>
+                          </li>
+                      ))}
+                    </ul>
+                  </li>
+              );
               });
             })()}
           </ul>
         </aside>
 
         <main className="flex-1 transition-all duration-200">
-          <h1 className="text-2xl font-bold mb-4 transition-colors duration-200">
-            Timesheet
-          </h1>
+          <h1 className="text-2xl font-bold mb-4">Timesheet</h1>
           <div className="mb-4 flex flex-col sm:flex-row sm:items-center sm:gap-4">
-            <label className="mb-2 sm:mb-0 transition-colors duration-200">
-              Select a week: (the Monday of the week will be used)
-            </label>
+            <label className="mb-2 sm:mb-0">Select a week: (the Monday of the week will be used)</label>
             <input
                 type="date"
                 value={weekStart}
                 onChange={handleWeekChange}
-                className="border rounded p-2 w-full sm:w-auto transition-colors duration-200 focus:ring focus:ring-blue-200"
+                className="border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded p-2 w-full sm:w-auto transition-colors duration-200 focus:ring focus:ring-blue-200 dark:focus:ring-blue-800"
             />
           </div>
           {weekStart && (
               <div className="overflow-x-auto mb-6">
-                <table className="min-w-full table-auto border-collapse border border-gray-300 transition-all duration-200">
+                <table className="min-w-full table-auto border-collapse border border-gray-300 dark:border-gray-600">
                   <thead>
-                  <tr className="bg-gray-100">
-                    <th className="px-4 py-2 border-b border-gray-300 text-left text-sm font-medium text-gray-700 uppercase transition-colors duration-200">
-                      Day
-                    </th>
-                    <th className="px-4 py-2 border-b border-gray-300 text-left text-sm font-medium text-gray-700 uppercase transition-colors duration-200">
-                      Date
-                    </th>
-                    <th className="px-4 py-2 border-b border-gray-300 text-left text-sm font-medium text-gray-700 uppercase transition-colors duration-200">
-                      Sessions
-                    </th>
-                    <th className="px-4 py-2 border-b border-gray-300 text-left text-sm font-medium text-gray-700 uppercase transition-colors duration-200">
-                      Total
-                    </th>
+                  <tr className="bg-gray-100 dark:bg-gray-800">
+                    {['Day','Date','Sessions','Total'].map(th => (
+                        <th
+                            key={th}
+                            className="px-4 py-2 border-b border-gray-300 dark:border-gray-700 text-left text-sm font-medium text-gray-700 dark:text-gray-300 uppercase"
+                        >
+                          {th}
+                        </th>
+                    ))}
                   </tr>
                   </thead>
                   <tbody>
                   {dayNames.map((d, i) => {
-                    const date = format(
-                        addDays(parseISO(weekStart), i),
-                        "dd/MM/yyyy",
-                    );
-                    const total =
-                        sessions[i]?.reduce((s, sess) => s + getHours(sess), 0) ||
-                        0;
+                    const date = format(addDays(parseISO(weekStart), i), 'dd/MM/yyyy');
+                    const total = sessions[i]?.reduce((s, sess) => s + getHours(sess), 0) || 0;
                     return (
                         <tr
                             key={d}
-                            className="odd:bg-white even:bg-gray-50 transition-colors duration-200 hover:bg-gray-100"
+                            className="odd:bg-white even:bg-gray-50 dark:odd:bg-gray-800 dark:even:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600"
                         >
-                          <td className="px-4 py-2 border-b border-gray-200 align-top w-24 text-sm transition-colors duration-200">
-                            {d}
-                          </td>
-                          <td className="px-4 py-2 border-b border-gray-200 align-top w-24 text-sm transition-colors duration-200">
-                            {date}
-                          </td>
-                          <td className="px-4 py-2 border-b border-gray-200 transition-colors duration-200">
+                          <td className="px-4 py-2 border-b border-gray-200 dark:border-gray-700 w-24 text-sm">{d}</td>
+                          <td className="px-4 py-2 border-b border-gray-200 dark:border-gray-700 w-24 text-sm">{date}</td>
+                          <td className="px-4 py-2 border-b border-gray-200 dark:border-gray-700">
                             {(sessions[i] || []).map((sess, j) => (
-                                <div
-                                    key={j}
-                                    className="flex flex-col sm:flex-row sm:items-center gap-2 mb-1"
-                                >
+                                <div key={j} className="flex flex-col sm:flex-row sm:items-center gap-2 mb-1">
                                   <input
                                       type="time"
-                                      value={sess.start || ""}
-                                      onChange={(e) =>
-                                          updateSession(i, j, "start", e.target.value)
-                                      }
-                                      onKeyDown={(e) => handleKeyDown(e, i, j, "start")}
-                                      className="border rounded p-1 w-full sm:w-24 transition-colors duration-200 focus:ring focus:ring-blue-200"
+                                      value={sess.start || ''}
+                                      onChange={e => updateSession(i, j, 'start', e.target.value)}
+                                      onKeyDown={e => handleKeyDown(e, i, j, 'start')}
+                                      className="border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded p-1 w-full sm:w-24 focus:ring focus:ring-blue-200 dark:focus:ring-blue-800"
                                   />
                                   —
                                   <input
                                       type="time"
-                                      value={sess.end || ""}
-                                      onChange={(e) =>
-                                          updateSession(i, j, "end", e.target.value)
-                                      }
-                                        onKeyDown={(e) => handleKeyDown(e, i, j, "end")}
-                                      className="border rounded p-1 w-full sm:w-24 transition-colors duration-200 focus:ring focus:ring-blue-200"
+                                      value={sess.end || ''}
+                                      onChange={e => updateSession(i, j, 'end', e.target.value)}
+                                      onKeyDown={e => handleKeyDown(e, i, j, 'end')}
+                                      className="border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded p-1 w-full sm:w-24 focus:ring focus:ring-blue-200 dark:focus:ring-blue-800"
                                   />
                                   <button
                                       onClick={() => removeSession(i, j)}
-                                      className="flex items-center justify-center
-                                w-3 h-3 leading-none
-                                rounded-full
-                                text-red-600
-                                transition duration-200
-                                hover:bg-red-600 hover:text-white cursor-pointer
-                              "
+                                      className="flex items-center justify-center w-3 h-3 rounded-full text-red-600 dark:text-red-400 hover:bg-red-600 dark:hover:bg-red-500 hover:text-white cursor-pointer"
                                   >
                                     ×
                                   </button>
@@ -486,14 +459,12 @@ export default function TimesheetPage() {
                             ))}
                             <button
                                 onClick={() => addSession(i)}
-                                className="text-blue-600 text-sm hover:text-blue-800 transition-colors duration-200 hover:underline cursor-pointer"
+                                className="text-blue-600 dark:text-blue-400 text-sm hover:text-blue-800 dark:hover:text-blue-300 transition-colors duration-200 hover:underline"
                             >
                               + Session
                             </button>
                           </td>
-                          <td className="px-4 py-2 border-b border-gray-200 align-top font-semibold w-24 text-sm transition-colors duration-200">
-                            {fmt(total)}
-                          </td>
+                          <td className="px-4 py-2 border-b border-gray-200 dark:border-gray-700 font-semibold w-24 text-sm">{fmt(total)}</td>
                         </tr>
                     );
                   })}
@@ -504,28 +475,24 @@ export default function TimesheetPage() {
 
           {log && (
               <div>
-                <div className="flex gap-4 flex-row items-center mb-2">
-                  <label className="font-semibold transition-colors duration-200">
-                    Generated Log:
-                  </label>
+                <div className="flex gap-4 items-center mb-2">
+                  <label className="font-semibold">Generated Log:</label>
                   <input
                       type="text"
                       placeholder="Your Name"
                       value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      className="border rounded-lg p-2 w-48 transition-colors duration-200 focus:ring focus:ring-blue-200"
+                      onChange={e => setName(e.target.value)}
+                      className="border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg p-2 w-48 focus:ring focus:ring-blue-200 dark:focus:ring-blue-800"
                   />
                   <button
                       onClick={() => {
                         navigator.clipboard.writeText(log);
-                        const button = document.getElementById("copyButton");
-                        button.textContent = "Copied!";
-                        setTimeout(() => {
-                          button.textContent = "Copy to Clipboard";
-                        }, 2000);
+                        const btn = document.getElementById('copyButton');
+                        btn.textContent = 'Copied!';
+                        setTimeout(() => (btn.textContent = 'Copy to Clipboard'), 2000);
                       }}
                       id="copyButton"
-                      className="py-2 px-4 bg-indigo-600 text-white rounded-lg transition-colors duration-200 hover:bg-indigo-700 cursor-pointer"
+                      className="py-2 px-4 bg-indigo-600 dark:bg-indigo-500 text-white rounded-lg transition-colors duration-200 hover:bg-indigo-700 dark:hover:bg-indigo-600 cursor-pointer"
                   >
                     Copy to Clipboard
                   </button>
@@ -533,7 +500,7 @@ export default function TimesheetPage() {
                 <textarea
                     readOnly
                     value={log}
-                    className="w-full h-64 border rounded p-2 font-mono mt-2 transition-colors duration-200 focus:ring focus:ring-blue-200"
+                    className="w-full h-64 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded p-2 font-mono focus:ring focus:ring-blue-200 dark:focus:ring-blue-800"
                 />
               </div>
           )}
