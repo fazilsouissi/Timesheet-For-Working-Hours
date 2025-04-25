@@ -1,29 +1,17 @@
-import { Geist, Geist_Mono } from "next/font/google";
+// src/app/layout.js
 import "./globals.css";
+import { Providers } from "./providers";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "./api/auth/[...nextauth]/route";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
+export default async function RootLayout({ children }) {
+  const session = await getServerSession(authOptions);
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
-export const metadata = {
-  title: "Timesheet App",
-  description: "A simple timesheet app",
-};
-
-export default function RootLayout({ children }) {
   return (
-    <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        {children}
+      <html lang="en">
+      <body>
+      <Providers session={session}>{children}</Providers>
       </body>
-    </html>
+      </html>
   );
 }

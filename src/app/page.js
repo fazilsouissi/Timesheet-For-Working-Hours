@@ -1,22 +1,21 @@
 // pages/index.js (or app/page.jsx)
 "use client";
-import {useEffect, useState} from "react";
+import {useEffect, useRef, useState} from "react";
 import {addDays, format, isValid, parseISO, startOfWeek} from "date-fns";
+import {signIn, signOut, useSession} from "next-auth/react";
+import {useRouter} from "next/navigation";
 
 const LS_KEY = "qanova_weeklySessions";
 const LS_KEY_NAME = "qanova_userName";
 
 export default function TimesheetPage() {
-  const [weeklySessions, setWeeklySessions] = useState({});
-  const [weeksList, setWeeksList] = useState([]);
-  const [weekStart, setWeekStart] = useState("");
-  const defaultRow = Array(5)
-      .fill()
-      .map(() => [{start: "", end: ""}]);
-  const sessions = weeklySessions[weekStart] || defaultRow;
-  const [log, setLog] = useState("");
-  const [name, setName] = useState("");
-  const dayNames = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+  // 1) Auth hook
+  const {data: session, status} = useSession({
+    required: true,
+    onUnauthenticated() {
+      signIn();
+    },
+  });
 
   // Helpers
   const formatISO = (date) => format(date, "yyyy-MM-dd");
@@ -26,6 +25,89 @@ export default function TimesheetPage() {
     mon.setHours(0, 0, 0, 0);
     return mon;
   };
+
+  const router = useRouter();
+  const isFirstSave = useRef(true);
+
+
+  // whenever we discover we're NOT signed in, send to register
+  // useEffect(() => {
+  //     if (status === "unauthenticated") {
+  //         router.push("/auth/register");
+  //       }
+  //   }, [status, router]);
+
+  // 2) All your state hooks
+  // const [weeklySessions, setWeeklySessions] = useState({}); // HERE CHANGE THIS
+  const [weeklySessions, setWeeklySessions] = useState(null);
+  const [weeksList, setWeeksList] = useState([]);
+  const [weekStart, setWeekStart] = useState("");
+  const defaultRow = Array(5)
+      .fill()
+      .map(() => [{start: "", end: ""}]);
+  const sessions = weeklySessions ? weeklySessions[weekStart] : defaultRow;
+  const [log, setLog] = useState("");
+  const [name, setName] = useState("");
+  const dayNames = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+  const [menuOpen, setMenuOpen] = useState(false);
+
+// derive initials:
+  const initials = name
+      .split(" ")
+      .map(n => n[0]?.toUpperCase())
+      .join("")
+      .slice(0, 2);
+
+
+  // 3) Effects for fetching & persisting
+  // useEffect(() => {
+  //   if (status !== "authenticated") return;
+  //   fetch("/api/sessions")
+  //       .then(r => r.json())
+  //       .then(({ weeklySessions }) => {
+  //         if (Object.keys(weeklySessions).length) {
+  //           setWeeklySessions(weeklySessions);
+  //         }
+  //       });
+  //   setName(session.user.name || "");
+  // }, [status, session]);
+
+
+  // 2) Fetch on mount (once authenticated)
+  useEffect(() => {
+    if (status !== "authenticated") return;
+    fetch("/api/sessions")
+        .then((r) => r.json())
+        .then(({weeklySessions}) => {
+          // if the DB was empty, fall back to your defaultRow logic here
+          setWeeklySessions(
+              Object.keys(weeklySessions).length
+                  ? weeklySessions
+                  : {[formatISO(getMonday())]: defaultRow}
+          );
+        });
+    setName(session.user.name || "");
+  }, [status]);
+
+  useEffect(() => {
+    if (status !== "authenticated" || weeklySessions === null) return;
+    if (isFirstSave.current) {
+      isFirstSave.current = false;
+      return;
+    }
+    fetch("/api/sessions", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({weeklySessions}),
+    });
+  }, [weeklySessions, status]);
+
+  useEffect(() => {
+    const saved = localStorage.getItem('theme')
+    const systemIsDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+    const theme = saved === 'dark' ? 'dark' : saved === 'light' ? 'light' : (systemIsDark ? 'dark' : 'light')
+    document.documentElement.classList.toggle('dark', theme === 'dark')
+  }, [])
 
   // Navigation logic between weeks (using Ctrl+Arrow left/right)
   useEffect(() => {
@@ -96,19 +178,20 @@ export default function TimesheetPage() {
   }, [weekStart, sessions, name]);
 
   // 2) Initialize from localStorage the first time
-  useEffect(() => {
-    const raw = localStorage.getItem(LS_KEY);
-    const stored = raw ? JSON.parse(raw) : {};
-    if (Object.keys(stored).length === 0) {
-      const iso = formatISO(getMonday());
-      stored[iso] = defaultRow;
-    }
-    setWeeklySessions(stored);
-    setName(localStorage.getItem(LS_KEY_NAME) || "");
-  }, []);
+  // useEffect(() => {
+  //   const raw = localStorage.getItem(LS_KEY);
+  //   const stored = raw ? JSON.parse(raw) : {};
+  //   if (Object.keys(stored).length === 0) {
+  //     const iso = formatISO(getMonday());
+  //     stored[iso] = defaultRow;
+  //   }
+  //   setWeeklySessions(stored);
+  //   setName(localStorage.getItem(LS_KEY_NAME) || "");
+  // }, []);
 
   // 3) When weeklySessions changes keep weeksList & weekStart in sync
   useEffect(() => {
+    if (!weeklySessions) return
     const keys = Object.keys(weeklySessions).sort((a, b) => b.localeCompare(a));
     setWeeksList(keys);
     // if current weekStart was removed or not set, pick the newest
@@ -283,11 +366,39 @@ export default function TimesheetPage() {
         </div>
     );
   }
+  // 4) Now you can safely early‐return while hooks have all been called
+  if (status === "loading" || weeklySessions === null) {
+    return <p>Loading your timesheet…</p>;
+  }
 
   return (
       <div
           className="p-4 md:p-8 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 min-h-screen flex flex-col md:flex-row">
+
         <aside className="w-full md:w-64 mb-4 md:mb-0 md:mr-6 transition-all duration-200">
+        <header className="w-full flex items-center justify-between mb-6">
+          <h2 className="text-xl font-semibold">Welcome, {name}</h2>
+          <div className="relative">
+            <button
+                onClick={() => setMenuOpen(o => !o)}
+                className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center uppercase font-medium transition duration-200 cursor-pointer"
+            >
+              {initials}
+            </button>
+            {menuOpen && (
+                <ul className="absolute right-0 mt-2 w-40 bg-white dark:bg-gray-800 border rounded shadow-lg">
+                  <li>
+                    <button
+                        onClick={() => signOut({ callbackUrl: "/" })}
+                        className="block w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 transition duration-200 cursor-pointer"
+                    >
+                      Disconnect
+                    </button>
+                  </li>
+                </ul>
+            )}
+          </div>
+        </header>
           <button
               onClick={handleNewWeek}
               className="mb-4 w-full py-2 bg-blue-600 dark:bg-blue-500 text-white rounded-lg transition-colors duration-200 hover:bg-blue-700 dark:hover:bg-blue-600 cursor-pointer"
@@ -385,7 +496,17 @@ export default function TimesheetPage() {
                 type="date"
                 value={weekStart}
                 onChange={handleWeekChange}
-                className="border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded p-2 w-full sm:w-auto transition-colors duration-200 focus:ring focus:ring-blue-200 dark:focus:ring-blue-800"
+                className="
+    border border-gray-300 dark:border-gray-600
+    bg-white dark:bg-gray-700
+    text-gray-900 dark:text-gray-100
+    rounded p-2 w-full sm:w-auto
+    transition-colors duration-200
+    focus:ring focus:ring-blue-200 dark:focus:ring-blue-800
+
+    dark:[&::-webkit-calendar-picker-indicator]:invert
+    dark:[&::-webkit-calendar-picker-indicator]:brightness-200
+  "
             />
           </div>
           {weekStart && (
@@ -440,14 +561,14 @@ export default function TimesheetPage() {
                                   />
                                   <span className="hidden sm:inline">—</span>
                                   <input
-                                    type="time"
-                                    value={sess.end || ""}
-                                    onChange={(e) =>
-                                        updateSession(i, j, "end", e.target.value)
-                                    }
-                                    onKeyDown={(e) => handleKeyDown(e, i, j, "end")}
-                                    className="border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded p-1 w-full sm:w-24 focus:ring focus:ring-blue-200 dark:focus:ring-blue-800"
-                                />
+                                      type="time"
+                                      value={sess.end || ""}
+                                      onChange={(e) =>
+                                          updateSession(i, j, "end", e.target.value)
+                                      }
+                                      onKeyDown={(e) => handleKeyDown(e, i, j, "end")}
+                                      className="border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded p-1 w-full sm:w-24 focus:ring focus:ring-blue-200 dark:focus:ring-blue-800"
+                                  />
                                   <button
                                       onClick={() => removeSession(i, j)}
                                       className="sm:text-lg leading-none flex items-center justify-center w-3 h-3 rounded-full text-red-600 dark:text-red-400 hover:bg-red-600 dark:hover:bg-red-500 hover:text-white cursor-pointer"
