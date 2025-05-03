@@ -430,7 +430,7 @@ export default function TimesheetPage() {
                   return sumW + weekTotal;
                 }, 0);
 
-                let hourlyRate = 22.5; // CHF
+                let hourlyRate = 23.38; // CHF
                 const monthPay = (monthHours * hourlyRate).toFixed(2);
 
                 return (
